@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Словник назв областей
 area_names = {
     "1": "Vinnytsia r.",
     "2": "Volyn r.",
