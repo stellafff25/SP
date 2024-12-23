@@ -103,14 +103,57 @@ def main():
 
     # Вкладки для графіка і таблиці
     with col2:
-        tab1, tab2 = st.tabs(["Таблиця", "Графік"])
+        tab1, tab2, tab3 = st.tabs(["Таблиця", "Графік 1", "Графік 2"])
 
         with tab1:
             st.header("Таблиця")
-            if filtered_data.empty:
+
+            # Вибір індексу з випадаючого списку
+            selected_index = st.session_state.selected_index
+
+            # Фільтруємо дані для вибраного індексу
+            table_data = filtered_data[["Year", "Week", "SMN", "SMT", selected_index]]
+
+            # Ініціалізація стану для сортування у session_state
+            if "ascending_order" not in st.session_state:
+                st.session_state["ascending_order"] = True
+            if "descending_order" not in st.session_state:
+                st.session_state["descending_order"] = False
+
+            # Чекбокси для сортування
+            def toggle_ascending():
+                if st.session_state["ascending_order"]:
+                    st.session_state["descending_order"] = False
+
+            def toggle_descending():
+                if st.session_state["descending_order"]:
+                    st.session_state["ascending_order"] = False
+
+            ascending_order = st.checkbox(
+                "Сортувати за зростанням",
+                value=st.session_state["ascending_order"],
+                key="ascending_order",
+                on_change=toggle_ascending
+            )
+
+            descending_order = st.checkbox(
+                "Сортувати за спаданням",
+                value=st.session_state["descending_order"],
+                key="descending_order",
+                on_change=toggle_descending
+            )
+
+            # Визначення порядку сортування
+            order = ascending_order and not descending_order
+
+            # Сортуємо дані за вибраним індексом
+            sorted_table_data = table_data.sort_values(by=selected_index, ascending=order)
+
+            # Відображення таблиці
+            if sorted_table_data.empty:
                 st.warning("Немає даних для відображення!")
             else:
-                st.dataframe(filtered_data)
+                st.dataframe(sorted_table_data)
 
         with tab2:
             st.header("Графік")
@@ -125,6 +168,31 @@ def main():
                 ax.grid(True)
                 st.pyplot(fig)
 
+        with tab3:
+            st.header("Порівняння з іншими областями")
+            comparison_data = data[
+                (data['Year'].between(st.session_state.year_range[0], st.session_state.year_range[1])) &
+                (data['Week'].between(st.session_state.week_range[0], st.session_state.week_range[1]))
+                ]
+            if comparison_data.empty:
+                st.warning("Немає даних для порівняння!")
+            else:
+                # Розрахунок середніх значень для кожної області
+                mean_values = comparison_data.groupby('area_name')[st.session_state.selected_index].mean().sort_values()
+
+                fig, ax = plt.subplots(figsize=(10, 6))
+                mean_values.plot(kind="bar", ax=ax, color="skyblue")
+                ax.set_title(f"Середнє значення {st.session_state.selected_index} (всі області)")
+                ax.set_ylabel(st.session_state.selected_index)
+                ax.set_xlabel("Області")
+                ax.axhline(
+                    mean_values.loc[st.session_state.selected_area],
+                    color="red", linestyle="--",
+                    label=f"{st.session_state.selected_area}"
+                )
+                ax.legend()
+                plt.xticks(rotation=45, ha='right')
+                st.pyplot(fig)
 
 if __name__ == "__main__":
     main()
